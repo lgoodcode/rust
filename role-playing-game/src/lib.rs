@@ -2,6 +2,8 @@
 // to enable stricter warnings.
 #![allow(unused)]
 
+use std::cmp::min;
+
 pub struct Player {
     pub health: u32,
     pub mana: Option<u32>,
@@ -10,36 +12,24 @@ pub struct Player {
 
 impl Player {
     pub fn revive(&self) -> Option<Player> {
-        if self.health != 0 {
-            return None;
-        }
-
-        let mut player = Player {
+        (self.health == 0).then(|| Player {
             health: 100,
-            mana: None,
+            mana: (self.level >= 10).then(|| 100),
             level: self.level,
-        };
-
-        if self.level >= 10 {
-            player.mana = Some(100);
-        }
-
-        Some(player)
+        })
     }
 
     pub fn cast_spell(&mut self, mana_cost: u32) -> u32 {
-        if self.mana.is_none() || self.level < 10 {
-            if self.health < mana_cost {
-                self.health = 0;
-            } else {
-                self.health -= mana_cost;
+        match self.mana {
+            Some(mana) if mana < mana_cost => 0,
+            Some(mana) => {
+                self.mana = Some(mana.saturating_sub(mana_cost));
+                return mana_cost * 2;
             }
-            return 0;
-        } else if self.mana.is_some() && self.mana < Some(mana_cost) {
-            return 0;
-        } else {
-            self.mana = Some(self.mana.unwrap() - mana_cost);
-            return mana_cost * 2;
+            None => {
+                self.health = self.health.saturating_sub(mana_cost);
+                return 0;
+            }
         }
     }
 }
